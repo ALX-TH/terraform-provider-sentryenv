@@ -1,0 +1,68 @@
+---
+# Generated from templates/index.md.tmpl
+# DO NOT EDIT DIRECTLY
+
+page_title: "Sentry Environments Terraform Provider"
+description: |-
+  Set up Sentry Project Environments. Please add any bug reports/feature requests in the GitHub repo.
+---
+
+# Sentry Environments Terraform Provider  
+
+Set up Sentry Project Environments.  
+
+The Terraform provider for Sentry Environment allows teams to create Sentry environments via their [API interface](https://docs.sentry.io/api/).  
+
+This provider can be used together with the [jianyuan/sentry](https://github.com/jianyuan/terraform-provider-sentry) provider to create the ***sentry_issue_alert*** resource.  
+The provider publishes demo events into Sentry for the specified environments, which triggers the creation of those environments.
+
+## Example Usage
+
+```terraform
+esource "sentry_key" "key" {
+  for_each = var.projects
+
+  organization = data.sentry_organization.organization.id
+  project      = try(each.value.name, each.key)
+  name         = try(each.value.name, each.key)
+
+  depends_on = [
+    sentry_team.team,
+    sentry_project.project
+  ]
+}
+
+resource "sentryenv_environment" "environment" {
+  for_each = var.projects
+
+  auth_token   = var.sentry_auth_token
+  slug         = var.slug
+  dsn          = sentry_key.key[each.key].dsn_public
+  project_name = sentry_key.key[each.key].name
+  envs         = join(",", each.value.sentry_environments)
+
+  depends_on = [
+    sentry_team.team,       # if using jianyuan/terraform-provider-sentry
+    sentry_project.project, # if using jianyuan/terraform-provider-sentry
+    sentry_key.key          # if using jianyuan/terraform-provider-sentry
+  ]
+}
+
+variable "projects" {
+    description = "A map of project names to their corresponding Sentry environments. Each project has a list of environment names where Sentry events should be created, such as dev, staging, and production."
+    type = map(object({
+        sentry_environments = list(string)
+    }))
+    default = {
+        "native-application" = {
+            sentry_environments = [
+                "dev",
+                "staging",
+                "production"
+            ]
+        }
+    }
+}
+```
+
+

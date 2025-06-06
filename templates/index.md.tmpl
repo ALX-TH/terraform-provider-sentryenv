@@ -1,0 +1,23 @@
+---
+# Generated from templates/index.md.tmpl
+# DO NOT EDIT DIRECTLY
+
+page_title: "Sentry Environments Terraform Provider"
+description: |-
+  Set up Sentry Project Environments. Please add any bug reports/feature requests in the GitHub repo.
+---
+
+# Sentry Environments Terraform Provider  
+
+Set up Sentry Project Environments.  
+
+The Terraform provider for Sentry Environment allows teams to create Sentry environments via their [API interface](https://docs.sentry.io/api/).  
+
+This provider can be used together with the [jianyuan/sentry](https://github.com/jianyuan/terraform-provider-sentry) provider to create the ***sentry_issue_alert*** resource.  
+The provider publishes demo events into Sentry for the specified environments, which triggers the creation of those environments.
+
+## Example Usage
+
+{{tffile "examples/provider/resource.tf"}}
+
+
