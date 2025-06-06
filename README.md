@@ -1,6 +1,7 @@
 Terraform Provider Sentry Environment
 =========================
 The Terraform provider for Sentry Environment allows teams to create Sentry environments via their [API interface](https://docs.sentry.io/api/).  
+Sentry does not allow you to create alerts for an environment unless that environment has been created beforehand.  
 
 This provider can be used together with the [jianyuan/sentry](https://github.com/jianyuan/terraform-provider-sentry) provider to create the ***sentry_issue_alert*** resource.  
 The provider publishes demo events into Sentry for the specified environments, which triggers the creation of those environments.
