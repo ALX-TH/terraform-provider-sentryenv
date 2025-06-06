@@ -73,7 +73,7 @@ func (r *SentryEnvEnvironmentResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	// Parse DSN like your script
+	// Parse DSN
 	dsn := data.Dsn.ValueString()
 	parts := strings.Split(dsn, "@")
 	if len(parts) != 2 {
