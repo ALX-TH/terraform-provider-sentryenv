@@ -1,19 +1,21 @@
 project_name: terraform-provider-sentryenv
 
 builds:
-  - binary: terraform-provider-sentryenv
-    goos: [linux, darwin, windows]
-    goarch: [amd64, arm64]
-    ldflags:
-      - -s -w
-
-archives:
-  - format: zip
-    files:
-      - LICENSE
+  - id: sentryenv
+    main: ./main.go
+    binary: terraform-provider-sentryenv
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+    archives:
+      - format: zip
+        name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "SHA256SUMS"
+  algorithm: sha256
 
 release:
   github:
