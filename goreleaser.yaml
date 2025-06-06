@@ -1,23 +1,60 @@
 project_name: terraform-provider-sentryenv
 
 builds:
-  - id: sentryenv
-    main: ./main.go
-    binary: terraform-provider-sentryenv
+  #- binary: terraform-provider-sentryenv
+  #  goos: [linux, darwin, windows]
+  #  goarch: [amd64, arm64]
+  #  ldflags:
+  #    - -s -w
+  - env:
+      # goreleaser does not work with CGO, it could also complicate
+      # usage by users in CI/CD systems like Terraform Cloud where
+      # they are unable to install libraries.
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - "-s -w -X master.version={{.Version}} -X master.commit={{.Commit}}"
     goos:
+      - windows
       - linux
       - darwin
     goarch:
       - amd64
-    archives:
-      - format: zip
-        name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}"
+      - arm
+      - arm64
+      - "386"
+    ignore:
+      - goos: darwin
+        goarch: "386"
+    binary: "{{ .ProjectName }}_v{{ .Version }}"
+
+archives:
+  - format: zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
-  name_template: "SHA256SUMS"
+  extra_files:
+    - glob: "terraform-registry-manifest.json"
+      name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
+  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
   algorithm: sha256
+signs:
+  - artifacts: checksum
+    args:
+      # if you are using this in a GitHub action or some other automated pipeline, you
+      # need to pass the batch flag to indicate its not interactive.
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
 
 release:
+  extra_files:
+    - glob: "terraform-registry-manifest.json"
+      name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
   github:
     owner: ALX-TH
     name: terraform-provider-sentryenv
