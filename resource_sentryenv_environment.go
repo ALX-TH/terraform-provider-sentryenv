@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -30,6 +32,70 @@ type EnvironmentModel struct {
 	ProjectName types.String `tfsdk:"project_name"`
 	Envs        types.String `tfsdk:"envs"`
 	Hash        types.String `tfsdk:"hash"`
+}
+
+func deleteIssueByEventID(ctx context.Context, eventID, organization, authToken, sentryHost, protocol string) error {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	queryURL := fmt.Sprintf("%s://%s/api/0/organizations/%s/issues/?query=id:%s", protocol, sentryHost, organization, eventID)
+
+	var issueID string
+	for i := 0; i < 10; i++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, queryURL, nil)
+		if err != nil {
+			return fmt.Errorf("creating request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+authToken)
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("getting issue: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			var issues []map[string]interface{}
+			if err := json.NewDecoder(resp.Body).Decode(&issues); err != nil {
+				return fmt.Errorf("decoding issue list: %w", err)
+			}
+			if len(issues) > 0 {
+				if id, ok := issues[0]["id"].(string); ok {
+					issueID = id
+					break
+				}
+			}
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	if issueID == "" {
+		return fmt.Errorf("issue not found for event ID: %s", eventID)
+	}
+
+	deleteURL := fmt.Sprintf("%s://%s/api/0/organizations/%s/issues/%s/", protocol, sentryHost, organization, issueID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, deleteURL, nil)
+	if err != nil {
+		return fmt.Errorf("creating delete request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("deleting issue: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected response deleting issue: %s", string(body))
+	}
+
+	return nil
 }
 
 func (r *SentryEnvEnvironmentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -152,8 +218,10 @@ func (r *SentryEnvEnvironmentResource) Create(ctx context.Context, req resource.
 		}
 		httpResp.Body.Close()
 
-		// Optionally you can add logic here to delete the issues as your script does,
-		// but for brevity it's omitted.
+		err = deleteIssueByEventID(ctx, eventID, data.Slug.ValueString(), data.AuthToken.ValueString(), sentryHost, protocol)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to delete issue", err.Error())
+		}
 	}
 
 	resourceID := strings.Join(eventIDs, "-")
