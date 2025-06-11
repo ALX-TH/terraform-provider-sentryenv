@@ -90,9 +90,9 @@ func deleteIssueByEventID(ctx context.Context, eventID, organization, authToken,
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected response deleting issue: %s", string(body))
+		return fmt.Errorf("unexpected response deleting issue: status=%d body=%s", resp.StatusCode, string(body))
 	}
 
 	return nil
